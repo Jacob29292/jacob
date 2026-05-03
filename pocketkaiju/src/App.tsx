@@ -1,3 +1,11 @@
-import { useEffect } from 'react';import SplashScreen from './components/SplashScreen';import HomeScreen from './components/HomeScreen';import CombatScreen from './components/CombatScreen';import EggIncubator from './components/EggIncubator';import KaijuBuilder from './components/KaijuBuilder';import Collection from './components/Collection';import EggOpeningModal from './components/EggOpeningModal';import { useGameStore } from './store/gameStore';
-export default function App(){const {screen,setScreen}=useGameStore();useEffect(()=>{setTimeout(()=>setScreen('home'),1500)},[setScreen]);
-return <main className='min-h-screen bg-gradient-to-b from-[#0f0f23] to-[#1a1a3e] font-[Inter]'><div className='max-w-md mx-auto'>{screen==='splash'&&<SplashScreen/>}{screen==='home'&&<HomeScreen/>}{screen==='combat'&&<CombatScreen/>}{screen==='incubator'&&<EggIncubator/>}{screen==='builder'&&<KaijuBuilder/>}{screen==='collection'&&<Collection/>}{screen!=='home'&&screen!=='splash'&&<button onClick={()=>setScreen('home')} className='m-3 text-white'>← Home</button>}</div><EggOpeningModal/></main>}
+import { useEffect } from 'react';
+import { launchGame } from './phaser/game';
+
+export default function App() {
+  useEffect(() => {
+    const game = launchGame('game-root');
+    return () => game.destroy(true);
+  }, []);
+
+  return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', background: '#05070f' }}><div id='game-root' /></main>;
+}
