@@ -1,0 +1,2 @@
+import { parts } from '../data/parts';import { useGameStore } from '../store/gameStore';
+export default function Collection(){const owned=useGameStore(s=>s.owned);return <div className='p-4 text-white'><h2>{owned.length}/{parts.length}</h2><div className='grid grid-cols-4 gap-2'>{parts.map(p=><div key={p.id} className='p-2 rounded bg-white/10 text-center' style={{opacity:owned.includes(p.id)?1:.3,color:p.color}}>{p.visualKey}</div>)}</div></div>}
