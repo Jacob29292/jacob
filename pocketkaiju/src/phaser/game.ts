@@ -6,8 +6,8 @@ import { MenuScene } from './scenes/MenuScene';
 
 export const launchGame = (parent: string): Phaser.Game => new Phaser.Game({
   type: Phaser.AUTO,
-  width: 640,
-  height: 440,
+  width: 1200,
+  height: 720,
   parent,
   scene: [MenuScene, AttackTestScene, DefenseTestScene, CollectionScene],
   backgroundColor: '#0b1020'

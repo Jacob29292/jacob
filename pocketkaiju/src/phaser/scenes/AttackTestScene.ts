@@ -1,54 +1,26 @@
 import Phaser from 'phaser';
-import { AttackKaiju, type AttackKaijuType, ATTACK_KAIJU_STATS } from '../entities/AttackKaiju';
+import { AttackKaiju, ATTACK_KAIJU_STATS, type AttackKaijuType } from '../entities/AttackKaiju';
 import { Core } from '../entities/Core';
 import { DefenseKaiju } from '../entities/DefenseKaiju';
 import { PathSystem } from '../systems/PathSystem';
-import { formatTime } from '../systems/UI';
+import { floatingText, formatTime, popImpact } from '../systems/UI';
+import { makeAttackSprite, makeDefenseSprite } from '../systems/RenderFactory';
 
 export class AttackTestScene extends Phaser.Scene {
-  private attackers: AttackKaiju[] = [];
-  private defenders: DefenseKaiju[] = [];
-  private path = new PathSystem();
-  private core = new Core();
-  private energy = 60;
-  private selected: AttackKaijuType = 'breaker';
-  private timer = 120000;
-  private kills = 0;
-  private coreDamage = 0;
-  private uiText!: Phaser.GameObjects.Text;
-
-  constructor() { super('AttackTestScene'); }
-
-  create(): void {
-    this.drawMap();
-    this.spawnEnemyDefenses();
-    this.createBar();
-    this.uiText = this.add.text(10, 10, '', { color: '#fff', fontSize: '16px' });
-    this.updateUi();
-  }
-  update(_t:number, d:number): void {
-    this.timer -= d; this.energy += d / 1000 * 9;
-    this.attackers.forEach((a, idx) => this.moveAttacker(a, d, idx));
-    this.autoCombat(d);
-    this.attackers = this.attackers.filter((x) => x.alive);
-    this.defenders = this.defenders.filter((x) => x.alive);
-    this.updateUi();
-    if (!this.core.alive || this.timer <= 0) this.endGame(!this.core.alive);
-  }
-  private drawMap(): void { /* simplified map */
-    this.cameras.main.setBackgroundColor('#15232d');
-    this.add.rectangle(320, 220, 640, 440, 0x183844);
-    this.path.mainPath.forEach((p, i, arr) => i && this.add.line(0,0,arr[i-1].x,arr[i-1].y,p.x,p.y,0xf2d28b).setLineWidth(8));
-    this.path.secondaryPath.forEach((p, i, arr) => i && this.add.line(0,0,arr[i-1].x,arr[i-1].y,p.x,p.y,0xa4f28b).setLineWidth(6));
-    this.add.rectangle(this.path.spawnZone.x+45, this.path.spawnZone.y+95, 90,190,0x233355).setStrokeStyle(2,0xffffff).setInteractive().on('pointerdown',()=>this.spawnAttacker());
-    this.add.text(25,180,'Spawn',{fontSize:'16px'});
-    this.add.circle(this.path.corePoint.x, this.path.corePoint.y, 24, 0xff4d6d);
-  }
-  private createBar(): void { let x=90; (Object.keys(ATTACK_KAIJU_STATS) as AttackKaijuType[]).forEach((k)=>{ const b=this.add.rectangle(x,410,120,45,0x24336b).setInteractive(); this.add.text(x,410,k,{fontSize:'14px'}).setOrigin(0.5); b.on('pointerdown',()=>this.selected=k); x+=140;}); }
-  private spawnEnemyDefenses(): void { this.path.defenseSlots.slice(0,4).forEach((p,i)=>{ const t=(['crab','laser','blob','nest'] as const)[i]; const d=new DefenseKaiju(`d${i}`,t,p.x,p.y); this.defenders.push(d); this.add.rectangle(p.x,p.y,24,24,0x4ce0b3); }); }
-  private spawnAttacker(): void { const cost=ATTACK_KAIJU_STATS[this.selected].cost; if (this.energy<cost) return; this.energy-=cost; const a=new AttackKaiju(`a${Date.now()}`,this.selected,85,220); this.attackers.push(a); this.add.circle(a.x,a.y,10,0xffc857).setData('u',a); }
-  private moveAttacker(a: AttackKaiju, d:number, idx:number): void { const path=this.path.choosePath(idx); const target=path[Math.min(a.targetPointIndex,path.length-1)]; const speed=(a.stats.speed*a.slowFactor)*d/1000; const dist=Math.hypot(target.x-a.x,target.y-a.y); if (dist<=speed){ a.x=target.x;a.y=target.y;a.targetPointIndex++; if (a.targetPointIndex>=path.length){ this.core.damage(a.stats.damage); this.coreDamage+=a.stats.damage; a.alive=false; }} else {a.x+=(target.x-a.x)/dist*speed;a.y+=(target.y-a.y)/dist*speed;} this.children.each((c:any)=>{ if(c.getData&&c.getData('u')===a){c.x=a.x;c.y=a.y;}}); }
-  private autoCombat(delta:number): void { this.defenders.forEach((d)=>{ d.tick(delta); if(d.attackCooldown>0)return; const target=this.attackers.find((a)=>a.alive&&Math.hypot(a.x-d.x,a.y-d.y)<=d.stats.range); if(target){ target.takeDamage(d.stats.damage); d.attackCooldown=900; if(!target.alive) this.kills++; }}); }
-  private updateUi(): void { this.uiText.setText(`Energie: ${Math.floor(this.energy)} | Coeur: ${this.core.hp}/1000 | Temps: ${formatTime(this.timer)} | Kills: ${this.kills}`); }
-  private endGame(attackerWon:boolean): void { this.scene.start('CollectionScene',{ end:true, win:attackerWon, coreDamage:this.coreDamage, kills:this.kills, adn:Math.floor(this.coreDamage/4+this.kills*3), from:'Attack' }); }
+  private path = new PathSystem(); private core = new Core();
+  private attackers: AttackKaiju[]=[]; private defenders: DefenseKaiju[]=[];
+  private views = new Map<string, Phaser.GameObjects.Container>(); private energy=60; private selected:AttackKaijuType='breaker';
+  private timer=120000; private kills=0; private coreDamage=0; private ui!:Phaser.GameObjects.Text; private coreView!:Phaser.GameObjects.Container; private hpBar!:Phaser.GameObjects.Rectangle;
+  create(){ this.cameras.main.fadeIn(300); this.drawMap(); this.spawnEnemyDefenses(); this.createCards(); this.ui=this.add.text(20,20,'',{fontSize:'24px'}); this.time.addEvent({delay:900,loop:true,callback:()=>this.energy+=4}); this.updateUi(); }
+  update(_t:number,d:number){ this.timer-=d; this.attackers.forEach((a,i)=>this.move(a,d,i)); this.autoCombat(d); this.attackers=this.attackers.filter(a=>a.alive); this.defenders=this.defenders.filter(a=>a.alive); this.updateUi(); if(!this.core.alive||this.timer<=0) this.end(!this.core.alive); }
+  private drawMap(){ this.cameras.main.setBackgroundColor('#0c1c22'); this.add.rectangle(600,360,1200,720,0x102b30); const g=this.add.graphics(); g.lineStyle(44,0x4a3a2a,1); g.beginPath(); g.moveTo(130,320); this.path.mainPath.slice(1).forEach(p=>g.lineTo(p.x*1.75,p.y*1.6)); g.strokePath(); g.lineStyle(30,0x3e5a33,0.95); g.beginPath(); g.moveTo(130,500); this.path.secondaryPath.slice(1).forEach(p=>g.lineTo(p.x*1.75,p.y*1.6)); g.strokePath(); this.drawArrows(); this.add.rectangle(90,370,120,250,0x2b3d54).setStrokeStyle(3,0xe3f6ff).setInteractive().on('pointerdown',()=>this.spawnAttacker()); this.add.text(90,250,'SPAWN',{fontSize:'24px'}).setOrigin(0.5); this.coreView=this.add.container(1060,360,[this.add.circle(0,0,42,0xf15b7f),this.add.circle(0,0,20,0xffc2cf)]); this.tweens.add({targets:this.coreView,scale:1.08,yoyo:true,duration:500,repeat:-1}); this.add.rectangle(1060,290,150,16,0x1a1a1a); this.hpBar=this.add.rectangle(985,290,150,12,0xff6b6b).setOrigin(0,0.5); }
+  private drawArrows(){ for(let i=230;i<=940;i+=150){ this.add.triangle(i,345,0,0,20,10,0,20,0xffffff,0.35).setAngle(90); this.add.triangle(i,470,0,0,20,10,0,20,0xffffff,0.3).setAngle(90);} }
+  private createCards(){ let x=220; (Object.keys(ATTACK_KAIJU_STATS) as AttackKaijuType[]).forEach(k=>{ const r=this.add.rectangle(x,660,220,95,0x233f57).setStrokeStyle(2,0x5fe0ff).setInteractive(); const s=ATTACK_KAIJU_STATS[k]; this.add.text(x-90,625,k,{fontSize:'19px'}); this.add.text(x-90,655,`Coût:${s.cost}`,{fontSize:'16px'}); makeAttackSprite(this,x+70,650,0xffc857).setScale(0.6); r.on('pointerdown',()=>{this.selected=k;}); x+=240; }); }
+  private spawnEnemyDefenses(){ this.path.defenseSlots.forEach((p,i)=>{ const t=(['crab','laser','blob','nest','crab'] as const)[i]; const d=new DefenseKaiju(`d${i}`,t,p.x*1.75,p.y*1.6); this.defenders.push(d); makeDefenseSprite(this,t,d.x,d.y);}); }
+  private spawnAttacker(){ const st=ATTACK_KAIJU_STATS[this.selected]; if(this.energy<st.cost) return; this.energy-=st.cost; const a=new AttackKaiju(`a${Date.now()}`,this.selected,100,360); const view=makeAttackSprite(this,a.x,a.y,0xffc857); this.attackers.push(a); this.views.set(a.id,view); }
+  private move(a:AttackKaiju,d:number,i:number){ const path=this.path.choosePath(i).map(p=>({x:p.x*1.75,y:p.y*1.6})); const t=path[Math.min(a.targetPointIndex,path.length-1)]; const s=a.stats.speed*a.slowFactor*d/1000*1.2; const di=Math.hypot(t.x-a.x,t.y-a.y); if(di<=s){ a.x=t.x;a.y=t.y;a.targetPointIndex++; if(a.targetPointIndex>=path.length){ this.hitCore(a.stats.damage); a.alive=false; this.views.get(a.id)?.destroy(); }} else {a.x+=(t.x-a.x)/di*s; a.y+=(t.y-a.y)/di*s;} this.views.get(a.id)?.setPosition(a.x,a.y); }
+  private hitCore(dmg:number){ this.core.damage(dmg); this.coreDamage+=dmg; this.hpBar.width=150*(this.core.hp/1000); this.coreView.iterate((x:any)=>x.setTint?.(0xff0000)); this.time.delayedCall(80,()=>this.coreView.iterate((x:any)=>x.clearTint?.())); this.cameras.main.shake(dmg>25?120:60,0.003); }
+  private autoCombat(d:number){ this.defenders.forEach(df=>{ df.tick(d); if(df.attackCooldown>0) return; const t=this.attackers.find(a=>a.alive&&Math.hypot(a.x-df.x,a.y-df.y)<=df.stats.range*1.6); if(!t) return; t.takeDamage(df.stats.damage); floatingText(this,t.x,t.y,`-${df.stats.damage}`); popImpact(this,t.x,t.y,0xffaaaa); df.attackCooldown=900; if(!t.alive){ this.kills++; this.views.get(t.id)?.destroy(); }}); }
+  private updateUi(){ this.ui.setText(`ATTACK TEST  Énergie:${Math.floor(this.energy)}  Cœur:${this.core.hp}/1000  Temps:${formatTime(this.timer)}  Kills:${this.kills}`); }
+  private end(win:boolean){ this.scene.start('CollectionScene',{ end:true, win, coreDamage:this.coreDamage, kills:this.kills, adn:Math.floor(this.coreDamage/3+this.kills*5), from:'Attack'}); }
 }

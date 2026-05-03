@@ -1,21 +1,11 @@
 import Phaser from 'phaser';
 
 export class MenuScene extends Phaser.Scene {
-  constructor() { super('MenuScene'); }
-
-  create(): void {
-    this.cameras.main.setBackgroundColor('#0f1226');
-    this.add.text(320, 65, 'Kaiju Core Wars', { fontSize: '40px', color: '#8bf2ff' }).setOrigin(0.5);
-    this.add.text(320, 105, 'Prototype attaque / défense', { fontSize: '18px', color: '#ffffff' }).setOrigin(0.5);
-
-    this.button(320, 200, 'Play Attack Test', () => this.scene.start('AttackTestScene'));
-    this.button(320, 280, 'Play Defense Test', () => this.scene.start('DefenseTestScene'));
-    this.button(320, 360, 'Collection', () => this.scene.start('CollectionScene'));
+  create(){ this.cameras.main.fadeIn(250); this.cameras.main.setBackgroundColor('#0f1226'); this.add.text(600,120,'Kaiju Core Wars',{fontSize:'72px',color:'#8bf2ff'}).setOrigin(0.5); this.add.text(600,180,'Playable Prototype',{fontSize:'30px'}).setOrigin(0.5);
+    this.button(600,310,'Play Attack Test',()=>this.go('AttackTestScene'));
+    this.button(600,400,'Play Defense Test',()=>this.go('DefenseTestScene'));
+    this.button(600,490,'Collection',()=>this.go('CollectionScene'));
   }
-
-  private button(x: number, y: number, label: string, onClick: () => void): void {
-    const rect = this.add.rectangle(x, y, 260, 58, 0x2d3f80).setStrokeStyle(2, 0x8bf2ff).setInteractive();
-    this.add.text(x, y, label, { fontSize: '22px', color: '#fff' }).setOrigin(0.5);
-    rect.on('pointerdown', onClick);
-  }
+  private go(k:string){ this.cameras.main.fadeOut(180); this.time.delayedCall(180,()=>this.scene.start(k)); }
+  private button(x:number,y:number,l:string,cb:()=>void){ const r=this.add.rectangle(x,y,400,70,0x2d3f80).setStrokeStyle(3,0x8bf2ff).setInteractive(); this.add.text(x,y,l,{fontSize:'34px'}).setOrigin(0.5); r.on('pointerdown',cb); }
 }
