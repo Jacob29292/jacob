@@ -1,0 +1,9 @@
+{
+  "name": "jacob-workspace",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix mak-game run dev",
+    "build": "npm --prefix mak-game run build",
+    "preview": "npm --prefix mak-game run preview"
+  }
+}

@@ -1,0 +1,2 @@
+import { useGameStore } from '../store/gameStore';
+export default ()=>{const {addEgg,setScreen}=useGameStore();return <div className='text-center space-y-4'><h2 className='text-5xl text-emerald-400 font-bold'>VICTORY</h2><div className='text-8xl'>🥚</div><button onClick={addEgg} className='w-full p-4 bg-fuchsia-600 rounded-xl'>AJOUTER À L'INCUBATEUR</button><button onClick={()=>setScreen('home')}>MENU</button></div>}
