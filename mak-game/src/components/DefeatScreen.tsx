@@ -1,0 +1,2 @@
+import { useGameStore } from '../store/gameStore';
+export default function DefeatScreen(){const {setScreen}=useGameStore();return <div className='space-y-3'><h2 className='text-4xl'>DEFEAT</h2><button className='w-full p-3 bg-fuchsia-600 rounded' onClick={()=>setScreen('prep')}>RÉESSAYER</button><button className='w-full p-3 bg-slate-700 rounded' onClick={()=>setScreen('home')}>MENU</button></div>}

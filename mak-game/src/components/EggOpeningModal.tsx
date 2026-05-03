@@ -1,0 +1,2 @@
+import { useGameStore } from '../store/gameStore';
+export default function EggOpeningModal(){const {openingEgg,closeOpening}=useGameStore(); if(!openingEgg)return null; return <div className='fixed inset-0 bg-black/80 flex items-center justify-center'><div className='bg-slate-900 p-6 rounded-xl text-center space-y-3'><div className='text-5xl'>🥚✨</div><div>Éclosion {openingEgg.rarity.toUpperCase()}</div><button onClick={closeOpening} className='px-4 py-2 rounded bg-fuchsia-600'>AWESOME</button></div></div>}
