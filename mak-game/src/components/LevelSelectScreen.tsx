@@ -1,0 +1,2 @@
+import { levels } from '../data/levels';import { useGameStore } from '../store/gameStore';
+export default function(){const{completed,startLevel,setScreen}=useGameStore();const unlocked=(id:number)=>id<=Math.max(1,...completed)+1;return <div><button onClick={()=>setScreen('home')}>←</button><h2>Niveaux</h2><div className='grid grid-cols-2 gap-2'>{levels.map(l=><button key={l.id} disabled={!unlocked(l.id)} onClick={()=>startLevel(l.id)} className='p-3 rounded-xl bg-slate-800 disabled:opacity-40'>{l.id}. {l.name}</button>)}</div></div>}

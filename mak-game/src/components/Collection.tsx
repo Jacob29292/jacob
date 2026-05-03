@@ -1,0 +1,2 @@
+import { kaijus } from '../data/kaijus';import { useGameStore } from '../store/gameStore';
+export default function(){const{owned,setScreen}=useGameStore();const c=kaijus.filter(k=>owned[k.id]?.unlocked).length;return <div><button onClick={()=>setScreen('home')}>←</button><h2>Collection {c}/6</h2><div className='grid grid-cols-2 gap-2'>{kaijus.map(k=><div key={k.id} className='p-3 rounded bg-slate-800'>{owned[k.id]?.unlocked?k.emoji:'⬛'} {k.name}</div>)}</div></div>}
