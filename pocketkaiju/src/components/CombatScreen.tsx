@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMemo, useState } from 'react';
 import { enemies } from '../data/enemies';
+import { parts } from '../data/parts';
 import { useGameStore } from '../store/gameStore';
 import { actionDamage } from '../utils/combat';
 
@@ -11,7 +12,10 @@ const enemyEmoji: Record<string, string> = { sludgo: '🧪', voltrax: '⚡', mag
 const hpColor = (v: number) => (v > 50 ? 'from-emerald-400 to-emerald-600' : v > 25 ? 'from-yellow-300 to-amber-500' : 'from-red-400 to-red-700');
 
 export default function CombatScreen() {
-  const [hp, setHp] = useState(100);
+  const equipped = useGameStore((s) => s.equipped);
+  const build = Object.values(equipped).map((id) => parts.find((p) => p.id === id)).filter(Boolean);
+  const bonus = build.reduce((a, p) => ({ hp: a.hp + p!.stats.hp, atk: a.atk + p!.stats.atk, def: a.def + p!.stats.def, rage: a.rage + p!.stats.rageGen }), { hp: 0, atk: 0, def: 0, rage: 0 });
+  const [hp, setHp] = useState(Math.min(160, 100 + bonus.hp));
   const [ehp, setEhp] = useState(100);
   const [rage, setRage] = useState(0);
   const [mult, setMult] = useState(1);
@@ -26,6 +30,8 @@ export default function CombatScreen() {
   const [fx, setFx] = useState<Fx[]>([]);
   const [isDead, setIsDead] = useState<'player' | 'enemy' | null>(null);
   const [enemy] = useState(enemies[Math.floor(Math.random() * 3)]);
+  const [enemyTurnIndex, setEnemyTurnIndex] = useState(0);
+  const [guard, setGuard] = useState(false);
   const addEgg = useGameStore((s) => s.addEgg);
 
   const spawnFx = (side: 'player' | 'enemy', value: string, color: string) => {
@@ -45,7 +51,11 @@ export default function CombatScreen() {
   const enemyTurn = () => {
     setActive('enemy');
     setTimeout(() => {
-      const ed = actionDamage('attack');
+      const enemyAction = enemy.script[enemyTurnIndex % enemy.script.length] ?? 'attack';
+      setEnemyTurnIndex((v) => v + 1);
+      const isSpecial = enemyAction === 'special';
+      const base = actionDamage(isSpecial ? 'special' : 'attack');
+      const ed = Math.max(6, Math.floor(base * (guard ? 0.5 : 1) - bonus.def * 0.25));
       setDash('enemy');
       setTimeout(() => {
         setHp((v) => {
@@ -53,11 +63,12 @@ export default function CombatScreen() {
           if (n <= 0) { setIsDead('player'); setShake(24); }
           return n;
         });
-        triggerHit('player', ed);
+        triggerHit('player', ed, isSpecial);
+        setGuard(false);
         setRage((v) => Math.min(100, v + 10));
       }, 150);
       setTimeout(() => setDash(null), 300);
-      setTimeout(() => { setTurn((t) => t + 1); setActive('player'); }, 550);
+      setTimeout(() => { setTurn((t) => t + 1); setActive('player'); }, isSpecial ? 850 : 550);
     }, 420);
   };
 
@@ -66,7 +77,7 @@ export default function CombatScreen() {
     if (a === 'special' && rage < 100) return;
     let d = 0;
     if (a === 'attack' || a === 'special') {
-      d = Math.floor(actionDamage(a) * mult);
+      d = Math.floor((actionDamage(a) + bonus.atk * 0.35) * mult);
       setMult(1);
       if (a === 'special') { setSpecialFlash(true); setShake(20); setTimeout(() => setSpecialFlash(false), 500); }
       setDash('player');
@@ -81,8 +92,8 @@ export default function CombatScreen() {
       setTimeout(() => setDash(null), 300);
     }
     if (a === 'charge') { setMult((v) => Math.min(3, v * 1.5)); setChargeAura('player'); setTimeout(() => setChargeAura(null), 1000); }
-    if (a === 'defend') { setDefShield('player'); spawnFx('player', '+5', '#22c55e'); setHp((v) => Math.min(100, v + 5)); setTimeout(() => setDefShield(null), 500); }
-    setRage((v) => (a === 'special' ? 0 : Math.min(100, v + 25)));
+    if (a === 'defend') { setGuard(true); setDefShield('player'); spawnFx('player', '+5', '#22c55e'); setHp((v) => Math.min(160, v + 5)); setTimeout(() => setDefShield(null), 500); }
+    setRage((v) => (a === 'special' ? 0 : Math.min(100, v + 25 + bonus.rage)));
     if (ehp - d <= 0) return;
     enemyTurn();
   };
@@ -100,7 +111,7 @@ export default function CombatScreen() {
 
       <div className='relative z-10'>
         <button onClick={() => useGameStore.getState().setScreen('home')} className='text-xs bg-black/30 px-2 py-1 rounded-lg'>← Home</button>
-        <p className='text-center text-sm opacity-80'>Tour {turn}</p>
+        <p className='text-center text-sm opacity-80'>Tour {turn} · Combo x{mult.toFixed(1)} {guard ? '· Garde active' : ''}</p>
 
         <div className='mt-6 grid grid-cols-2 gap-4 items-end'>
           {([['player', hp, '🦖'], ['enemy', ehp, enemyEmoji[enemy.id] ?? '👾']] as const).map(([side, life, emoji]) => (
