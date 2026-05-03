@@ -9,6 +9,12 @@ export const launchGame = (parent: string): Phaser.Game => new Phaser.Game({
   width: 1200,
   height: 720,
   parent,
-  scene: [MenuScene, AttackTestScene, DefenseTestScene, CollectionScene],
-  backgroundColor: '#0b1020'
+  backgroundColor: '#0b1020',
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    width: 1200,
+    height: 720
+  },
+  scene: [MenuScene, AttackTestScene, DefenseTestScene, CollectionScene]
 });
