@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { AttackTestScene } from './scenes/AttackTestScene';
-import { BootScene } from './scenes/BootScene';
 import { CollectionScene } from './scenes/CollectionScene';
 import { DefenseTestScene } from './scenes/DefenseTestScene';
 import { MenuScene } from './scenes/MenuScene';
@@ -21,6 +20,6 @@ export const launchGame = (parent: string): Phaser.Game => {
       width: 1200,
       height: 720
     },
-    scene: [BootScene, MenuScene, AttackTestScene, DefenseTestScene, CollectionScene]
+    scene: [MenuScene, AttackTestScene, DefenseTestScene, CollectionScene]
   });
 };

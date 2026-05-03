@@ -7,11 +7,20 @@ export default function App() {
 
   useEffect(() => {
     console.log('[DEBUG] App mounted, launching Phaser');
-    if (!document.getElementById('game-root')) return;
+    const parent = document.getElementById('game-root');
+    if (!parent) return;
+    if (gameRef.current) return;
+
+    const onReady = (evt: Event) => {
+      const e = evt as CustomEvent<{ scene: string }>;
+      if (e.detail?.scene === 'MenuScene') {
+        document.getElementById('phaser-launch-error')?.remove();
+      }
+    };
+    window.addEventListener('phaser-scene-ready', onReady);
 
     const fallback = setTimeout(() => {
-      const debug = document.getElementById('phaser-debug-ready');
-      if (!debug) {
+      if (!document.getElementById('phaser-launch-error')) {
         const err = document.createElement('div');
         err.id = 'phaser-launch-error';
         err.textContent = "Erreur : la scène Phaser ne s’est pas chargée. Regarde la console.";
@@ -30,6 +39,7 @@ export default function App() {
 
     return () => {
       clearTimeout(fallback);
+      window.removeEventListener('phaser-scene-ready', onReady);
       document.getElementById('phaser-launch-error')?.remove();
       gameRef.current?.destroy(true);
       gameRef.current = null;
